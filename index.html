@@ -2,7 +2,11 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
 
   <title>OKC Trash Map</title>
 
@@ -12,10 +16,12 @@
   />
 
   <style>
-    html, body {
+    html,
+    body {
       margin: 0;
       height: 100%;
       font-family: Arial, sans-serif;
+      overflow: hidden;
     }
 
     #map {
@@ -23,57 +29,89 @@
       width: 100%;
     }
 
-    #controls {
+    #topControls {
       position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
+
+      top: max(10px, env(safe-area-inset-top));
+      left: 10px;
+      right: 10px;
+
       z-index: 1000;
 
-      background: white;
-      padding: 10px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      background: rgba(255,255,255,0.96);
 
-      width: 90%;
-      max-width: 720px;
+      padding: 8px;
+
+      border-radius: 12px;
+
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
     }
 
     #searchRow {
       display: flex;
       gap: 6px;
-      margin-bottom: 8px;
     }
 
     #addressInput {
       flex: 1;
+      min-width: 0;
+
       padding: 10px;
-      border: 1px solid #aaa;
+
+      border: 1px solid #bbb;
       border-radius: 8px;
-      font-size: 15px;
+
+      font-size: 16px;
     }
 
     button {
       border: none;
+
       padding: 9px 12px;
+
       border-radius: 8px;
+
       background: #eeeeee;
-      cursor: pointer;
+
       font-weight: bold;
+
+      cursor: pointer;
+
+      white-space: nowrap;
+    }
+
+    #searchButton {
+      background: #1677ff;
+      color: white;
     }
 
     #locationButton {
+      margin-top: 7px;
+
       width: 100%;
-      margin-bottom: 8px;
+
       background: #222;
       color: white;
     }
 
     #filters {
+      margin-top: 7px;
+
       display: flex;
+
       gap: 6px;
-      flex-wrap: wrap;
-      justify-content: center;
+
+      overflow-x: auto;
+
+      white-space: nowrap;
+
+      padding-bottom: 2px;
+
+      scrollbar-width: none;
+    }
+
+    #filters::-webkit-scrollbar {
+      display: none;
     }
 
     #filters button.active {
@@ -81,49 +119,112 @@
       color: white;
     }
 
-    .legend {
+    #message {
+      display: none;
+
+      margin-top: 6px;
+
+      text-align: center;
+
+      font-size: 13px;
+    }
+
+    #infoButton {
+      position: absolute;
+
+      right: 12px;
+      bottom: 28px;
+
+      z-index: 1000;
+
+      width: 44px;
+      height: 44px;
+
+      border-radius: 50%;
+
+      padding: 0;
+
       background: white;
-      padding: 12px 14px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-      line-height: 24px;
+
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+
+      font-size: 20px;
+    }
+
+    #legendPanel {
+      display: none;
+
+      position: absolute;
+
+      right: 12px;
+      bottom: 82px;
+
+      z-index: 1000;
+
+      background: white;
+
+      padding: 12px;
+
+      border-radius: 12px;
+
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+
+      line-height: 25px;
+
       font-size: 14px;
     }
 
     .color-box {
       display: inline-block;
+
       width: 14px;
       height: 14px;
+
       margin-right: 7px;
+
       border: 1px solid #555;
+
       vertical-align: middle;
     }
 
-    #message {
-      text-align: center;
-      margin-top: 7px;
-      font-size: 13px;
+    @media (max-width: 600px) {
+
+      #topControls {
+        padding: 7px;
+      }
+
+      button {
+        padding: 9px 11px;
+      }
+
+      #addressInput {
+        font-size: 16px;
+      }
     }
   </style>
 </head>
 
 <body>
 
-<div id="controls">
+<div id="topControls">
 
   <div id="searchRow">
 
     <input
       id="addressInput"
       type="text"
-      placeholder="Enter an OKC address"
-    >
+      placeholder="Search OKC address"
+    />
 
-    <button onclick="searchAddress()">
+    <button
+      id="searchButton"
+      onclick="searchAddress()"
+    >
       Search
     </button>
 
   </div>
+
 
   <button
     id="locationButton"
@@ -131,6 +232,7 @@
   >
     📍 Use My Location
   </button>
+
 
   <div id="filters">
 
@@ -147,25 +249,79 @@
       🗑 Trash May Be Out
     </button>
 
-    <button onclick="setFilter(0, this)">
+    <button
+      onclick="setFilter(0, this)"
+    >
       Today
     </button>
 
-    <button onclick="setFilter(1, this)">
+    <button
+      onclick="setFilter(1, this)"
+    >
       Tomorrow
     </button>
 
-    <button onclick="setFilter(2, this)">
+    <button
+      onclick="setFilter(2, this)"
+    >
       2 Days
     </button>
 
-    <button onclick="setFilter(3, this)">
+    <button
+      onclick="setFilter(3, this)"
+    >
       3 Days
     </button>
 
   </div>
 
+
   <div id="message"></div>
+
+</div>
+
+
+<button
+  id="infoButton"
+  onclick="toggleLegend()"
+>
+  ℹ️
+</button>
+
+
+<div id="legendPanel">
+
+  <b>Big Trash Map</b><br>
+
+  <span
+    class="color-box"
+    style="background:red;"
+  ></span>
+  Today<br>
+
+  <span
+    class="color-box"
+    style="background:orange;"
+  ></span>
+  Tomorrow<br>
+
+  <span
+    class="color-box"
+    style="background:yellow;"
+  ></span>
+  2 Days Away<br>
+
+  <span
+    class="color-box"
+    style="background:green;"
+  ></span>
+  3 Days Away<br>
+
+  <span
+    class="color-box"
+    style="background:#9c27b0;"
+  ></span>
+  Trash May Be Out
 
 </div>
 
@@ -173,7 +329,9 @@
 <div id="map"></div>
 
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+></script>
 
 
 <script>
@@ -192,14 +350,12 @@
   ).addTo(map);
 
 
-
   const bulkyWasteURL =
     'https://gis.okc.gov/arcgis/rest/services/Public/Data_OKC_Gov_Application_Service/MapServer/10/query' +
     '?where=1%3D1' +
     '&outFields=*' +
     '&outSR=4326' +
     '&f=geojson';
-
 
 
   let trashLayer;
@@ -211,20 +367,35 @@
   let locationMarker;
 
 
+  function getPickupDate(value) {
+
+    const rawDate =
+      new Date(value);
+
+    return new Date(
+      rawDate.getUTCFullYear(),
+      rawDate.getUTCMonth(),
+      rawDate.getUTCDate()
+    );
+  }
+
 
   function getDaysAway(feature) {
 
     const pickup =
-      new Date(feature.properties.NextPick1);
+      getPickupDate(
+        feature.properties.NextPick1
+      );
 
     const today =
       new Date();
 
-
-    today.setHours(0,0,0,0);
-
-    pickup.setHours(0,0,0,0);
-
+    today.setHours(
+      0,
+      0,
+      0,
+      0
+    );
 
     return Math.round(
       (pickup - today)
@@ -232,7 +403,6 @@
       (1000 * 60 * 60 * 24)
     );
   }
-
 
 
   function getColor(daysAway) {
@@ -257,7 +427,6 @@
   }
 
 
-
   function drawMap() {
 
     if (trashLayer) {
@@ -265,7 +434,6 @@
       map.removeLayer(
         trashLayer
       );
-
     }
 
 
@@ -285,7 +453,6 @@
             ) {
 
               return true;
-
             }
 
 
@@ -297,15 +464,12 @@
                 daysAway >= 0 &&
                 daysAway <= 3
               );
-
             }
 
 
             return (
-              daysAway ===
-              currentFilter
+              daysAway === currentFilter
             );
-
           },
 
 
@@ -317,6 +481,7 @@
 
             let fillColor =
               getColor(daysAway);
+
 
             let opacity =
               0.08;
@@ -331,7 +496,6 @@
 
               opacity =
                 0.7;
-
             }
 
             else if (
@@ -341,7 +505,6 @@
 
               opacity =
                 0.7;
-
             }
 
 
@@ -356,54 +519,65 @@
 
               fillOpacity:
                 opacity
-
             };
-
           },
 
 
           onEachFeature:
-            function(feature, layer) {
+            function(
+              feature,
+              layer
+            ) {
 
             const p =
               feature.properties;
+
 
             const daysAway =
               getDaysAway(feature);
 
 
-            let message =
+            let status =
               'Pickup is later';
 
 
-            if (daysAway === 0) {
+            if (
+              daysAway === 0
+            ) {
 
-              message =
+              status =
                 'Pickup is TODAY';
-
             }
 
-            else if (daysAway === 1) {
+            else if (
+              daysAway === 1
+            ) {
 
-              message =
+              status =
                 'Pickup is TOMORROW';
-
             }
 
-            else if (daysAway > 1) {
+            else if (
+              daysAway > 1
+            ) {
 
-              message =
+              status =
                 'Pickup is in ' +
                 daysAway +
                 ' days';
-
             }
+
+
+            const pickupDate =
+              getPickupDate(
+                p.NextPick1
+              );
 
 
             layer.bindPopup(
 
               '<b>' +
-              message +
+              status +
               '</b>' +
 
               '<br><br>' +
@@ -415,20 +589,15 @@
 
               '<b>Pickup date:</b> ' +
 
-              new Date(
-                p.NextPick1
-              ).toLocaleDateString()
+              pickupDate.toLocaleDateString()
 
             );
-
           }
 
         }
 
       ).addTo(map);
-
   }
-
 
 
   function setFilter(
@@ -460,12 +629,10 @@
 
 
     drawMap();
-
   }
 
 
-
-  function useMyLocation() {
+  function showMessage(text) {
 
     const message =
       document.getElementById(
@@ -474,18 +641,32 @@
 
 
     message.innerText =
-      'Finding your location...';
+      text;
+
+
+    message.style.display =
+      text
+        ? 'block'
+        : 'none';
+  }
+
+
+  function useMyLocation() {
+
+    showMessage(
+      'Finding your location...'
+    );
 
 
     if (
       !navigator.geolocation
     ) {
 
-      message.innerText =
-        'Location is not supported by this browser.';
+      showMessage(
+        'Location is not supported.'
+      );
 
       return;
-
     }
 
 
@@ -495,6 +676,7 @@
 
         const lat =
           position.coords.latitude;
+
 
         const lng =
           position.coords.longitude;
@@ -507,29 +689,30 @@
         );
 
 
-        message.innerText =
-          'Location found.';
+        showMessage('');
 
       },
 
 
       function(error) {
 
-        message.innerText =
-          'Could not get your location. Make sure location permission is allowed.';
+        showMessage(
+          'Could not get your location.'
+        );
 
       },
 
 
       {
         enableHighAccuracy:
-          true
+          true,
+
+        timeout:
+          10000
       }
 
     );
-
   }
-
 
 
   function showLocation(
@@ -538,12 +721,13 @@
     text
   ) {
 
-    if (locationMarker) {
+    if (
+      locationMarker
+    ) {
 
       map.removeLayer(
         locationMarker
       );
-
     }
 
 
@@ -560,9 +744,7 @@
       [lat, lng],
       14
     );
-
   }
-
 
 
   async function searchAddress() {
@@ -573,28 +755,25 @@
       );
 
 
-    const message =
-      document.getElementById(
-        'message'
-      );
-
-
     const address =
       input.value.trim();
 
 
-    if (!address) {
+    if (
+      !address
+    ) {
 
-      message.innerText =
-        'Type an address first.';
+      showMessage(
+        'Type an address first.'
+      );
 
       return;
-
     }
 
 
-    message.innerText =
-      'Searching...';
+    showMessage(
+      'Searching...'
+    );
 
 
     const fullAddress =
@@ -620,6 +799,7 @@
       const response =
         await fetch(url);
 
+
       const data =
         await response.json();
 
@@ -629,11 +809,11 @@
         data.candidates.length === 0
       ) {
 
-        message.innerText =
-          'Address not found.';
+        showMessage(
+          'Address not found.'
+        );
 
         return;
-
       }
 
 
@@ -641,34 +821,49 @@
         data.candidates[0];
 
 
-      const lat =
-        result.location.y;
-
-      const lng =
-        result.location.x;
-
-
       showLocation(
-        lat,
-        lng,
+        result.location.y,
+        result.location.x,
         result.address
       );
 
 
-      message.innerText =
-        result.address;
+      showMessage('');
 
     }
 
     catch(error) {
 
-      message.innerText =
-        'Something went wrong searching the address.';
-
+      showMessage(
+        'Address search failed.'
+      );
     }
-
   }
 
+
+  function toggleLegend() {
+
+    const legend =
+      document.getElementById(
+        'legendPanel'
+      );
+
+
+    if (
+      legend.style.display ===
+      'block'
+    ) {
+
+      legend.style.display =
+        'none';
+    }
+
+    else {
+
+      legend.style.display =
+        'block';
+    }
+  }
 
 
   document
@@ -684,113 +879,29 @@
         ) {
 
           searchAddress();
-
         }
-
       }
     );
-
 
 
   fetch(
     bulkyWasteURL
   )
 
-  .then(
-    response =>
-      response.json()
-  )
+    .then(
+      response =>
+        response.json()
+    )
 
-  .then(
-    data => {
+    .then(
+      data => {
 
-      trashData =
-        data;
+        trashData =
+          data;
 
-      drawMap();
-
-    }
-  );
-
-
-
-  const legend =
-    L.control(
-      {
-        position:
-          'bottomright'
+        drawMap();
       }
     );
-
-
-  legend.onAdd =
-    function() {
-
-      const div =
-        L.DomUtil.create(
-          'div',
-          'legend'
-        );
-
-
-      div.innerHTML = `
-
-        <b>Big Trash Map</b>
-
-        <br>
-
-        <span
-          class="color-box"
-          style="background:red;"
-        ></span>
-
-        Today
-
-        <br>
-
-        <span
-          class="color-box"
-          style="background:orange;"
-        ></span>
-
-        Tomorrow
-
-        <br>
-
-        <span
-          class="color-box"
-          style="background:yellow;"
-        ></span>
-
-        2 Days Away
-
-        <br>
-
-        <span
-          class="color-box"
-          style="background:green;"
-        ></span>
-
-        3 Days Away
-
-        <br>
-
-        <span
-          class="color-box"
-          style="background:#9c27b0;"
-        ></span>
-
-        Trash May Be Out
-
-      `;
-
-
-      return div;
-
-    };
-
-
-  legend.addTo(map);
 
 </script>
 
