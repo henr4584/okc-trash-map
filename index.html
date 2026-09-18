@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>OKC Trash Map</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+    }
+
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+
+      background: white;
+      padding: 10px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+
+      width: 90%;
+      max-width: 720px;
+    }
+
+    #searchRow {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    #addressInput {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #aaa;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+
+    button {
+      border: none;
+      padding: 9px 12px;
+      border-radius: 8px;
+      background: #eeeeee;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #locationButton {
+      width: 100%;
+      margin-bottom: 8px;
+      background: #222;
+      color: white;
+    }
+
+    #filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    #filters button.active {
+      background: #222;
+      color: white;
+    }
+
+    .legend {
+      background: white;
+      padding: 12px 14px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      line-height: 24px;
+      font-size: 14px;
+    }
+
+    .color-box {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: 7px;
+      border: 1px solid #555;
+      vertical-align: middle;
+    }
+
+    #message {
+      text-align: center;
+      margin-top: 7px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="controls">
+
+  <div id="searchRow">
+
+    <input
+      id="addressInput"
+      type="text"
+      placeholder="Enter an OKC address"
+    >
+
+    <button onclick="searchAddress()">
+      Search
+    </button>
+
+  </div>
+
+  <button
+    id="locationButton"
+    onclick="useMyLocation()"
+  >
+    📍 Use My Location
+  </button>
+
+  <div id="filters">
+
+    <button
+      class="active"
+      onclick="setFilter('all', this)"
+    >
+      All
+    </button>
+
+    <button
+      onclick="setFilter('out', this)"
+    >
+      🗑 Trash May Be Out
+    </button>
+
+    <button onclick="setFilter(0, this)">
+      Today
+    </button>
+
+    <button onclick="setFilter(1, this)">
+      Tomorrow
+    </button>
+
+    <button onclick="setFilter(2, this)">
+      2 Days
+    </button>
+
+    <button onclick="setFilter(3, this)">
+      3 Days
+    </button>
+
+  </div>
+
+  <div id="message"></div>
+
+</div>
+
+
+<div id="map"></div>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+<script>
+
+  const map = L.map('map').setView(
+    [35.4676, -97.5164],
+    10
+  );
+
+
+  L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    {
+      maxZoom: 19
+    }
+  ).addTo(map);
+
+
+
+  const bulkyWasteURL =
+    'https://gis.okc.gov/arcgis/rest/services/Public/Data_OKC_Gov_Application_Service/MapServer/10/query' +
+    '?where=1%3D1' +
+    '&outFields=*' +
+    '&outSR=4326' +
+    '&f=geojson';
+
+
+
+  let trashLayer;
+
+  let trashData;
+
+  let currentFilter = 'all';
+
+  let locationMarker;
+
+
+
+  function getDaysAway(feature) {
+
+    const pickup =
+      new Date(feature.properties.NextPick1);
+
+    const today =
+      new Date();
+
+
+    today.setHours(0,0,0,0);
+
+    pickup.setHours(0,0,0,0);
+
+
+    return Math.round(
+      (pickup - today)
+      /
+      (1000 * 60 * 60 * 24)
+    );
+  }
+
+
+
+  function getColor(daysAway) {
+
+    if (daysAway === 0) {
+      return 'red';
+    }
+
+    if (daysAway === 1) {
+      return 'orange';
+    }
+
+    if (daysAway === 2) {
+      return 'yellow';
+    }
+
+    if (daysAway === 3) {
+      return 'green';
+    }
+
+    return '#999999';
+  }
+
+
+
+  function drawMap() {
+
+    if (trashLayer) {
+
+      map.removeLayer(
+        trashLayer
+      );
+
+    }
+
+
+    trashLayer =
+      L.geoJSON(
+        trashData,
+        {
+
+          filter: function(feature) {
+
+            const daysAway =
+              getDaysAway(feature);
+
+
+            if (
+              currentFilter === 'all'
+            ) {
+
+              return true;
+
+            }
+
+
+            if (
+              currentFilter === 'out'
+            ) {
+
+              return (
+                daysAway >= 0 &&
+                daysAway <= 3
+              );
+
+            }
+
+
+            return (
+              daysAway ===
+              currentFilter
+            );
+
+          },
+
+
+          style: function(feature) {
+
+            const daysAway =
+              getDaysAway(feature);
+
+
+            let fillColor =
+              getColor(daysAway);
+
+            let opacity =
+              0.08;
+
+
+            if (
+              currentFilter === 'out'
+            ) {
+
+              fillColor =
+                '#9c27b0';
+
+              opacity =
+                0.7;
+
+            }
+
+            else if (
+              daysAway >= 0 &&
+              daysAway <= 3
+            ) {
+
+              opacity =
+                0.7;
+
+            }
+
+
+            return {
+
+              color: '#444',
+
+              weight: 1,
+
+              fillColor:
+                fillColor,
+
+              fillOpacity:
+                opacity
+
+            };
+
+          },
+
+
+          onEachFeature:
+            function(feature, layer) {
+
+            const p =
+              feature.properties;
+
+            const daysAway =
+              getDaysAway(feature);
+
+
+            let message =
+              'Pickup is later';
+
+
+            if (daysAway === 0) {
+
+              message =
+                'Pickup is TODAY';
+
+            }
+
+            else if (daysAway === 1) {
+
+              message =
+                'Pickup is TOMORROW';
+
+            }
+
+            else if (daysAway > 1) {
+
+              message =
+                'Pickup is in ' +
+                daysAway +
+                ' days';
+
+            }
+
+
+            layer.bindPopup(
+
+              '<b>' +
+              message +
+              '</b>' +
+
+              '<br><br>' +
+
+              '<b>Schedule:</b> ' +
+              p.PickupDay +
+
+              '<br>' +
+
+              '<b>Pickup date:</b> ' +
+
+              new Date(
+                p.NextPick1
+              ).toLocaleDateString()
+
+            );
+
+          }
+
+        }
+
+      ).addTo(map);
+
+  }
+
+
+
+  function setFilter(
+    filter,
+    button
+  ) {
+
+    currentFilter =
+      filter;
+
+
+    document
+      .querySelectorAll(
+        '#filters button'
+      )
+      .forEach(
+        btn =>
+          btn.classList.remove(
+            'active'
+          )
+      );
+
+
+    button
+      .classList
+      .add(
+        'active'
+      );
+
+
+    drawMap();
+
+  }
+
+
+
+  function useMyLocation() {
+
+    const message =
+      document.getElementById(
+        'message'
+      );
+
+
+    message.innerText =
+      'Finding your location...';
+
+
+    if (
+      !navigator.geolocation
+    ) {
+
+      message.innerText =
+        'Location is not supported by this browser.';
+
+      return;
+
+    }
+
+
+    navigator.geolocation.getCurrentPosition(
+
+      function(position) {
+
+        const lat =
+          position.coords.latitude;
+
+        const lng =
+          position.coords.longitude;
+
+
+        showLocation(
+          lat,
+          lng,
+          'You are here'
+        );
+
+
+        message.innerText =
+          'Location found.';
+
+      },
+
+
+      function(error) {
+
+        message.innerText =
+          'Could not get your location. Make sure location permission is allowed.';
+
+      },
+
+
+      {
+        enableHighAccuracy:
+          true
+      }
+
+    );
+
+  }
+
+
+
+  function showLocation(
+    lat,
+    lng,
+    text
+  ) {
+
+    if (locationMarker) {
+
+      map.removeLayer(
+        locationMarker
+      );
+
+    }
+
+
+    locationMarker =
+      L.marker(
+        [lat, lng]
+      )
+      .addTo(map)
+      .bindPopup(text)
+      .openPopup();
+
+
+    map.setView(
+      [lat, lng],
+      14
+    );
+
+  }
+
+
+
+  async function searchAddress() {
+
+    const input =
+      document.getElementById(
+        'addressInput'
+      );
+
+
+    const message =
+      document.getElementById(
+        'message'
+      );
+
+
+    const address =
+      input.value.trim();
+
+
+    if (!address) {
+
+      message.innerText =
+        'Type an address first.';
+
+      return;
+
+    }
+
+
+    message.innerText =
+      'Searching...';
+
+
+    const fullAddress =
+      address +
+      ', Oklahoma City, Oklahoma';
+
+
+    const url =
+      'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates' +
+
+      '?SingleLine=' +
+      encodeURIComponent(
+        fullAddress
+      ) +
+
+      '&f=json' +
+
+      '&outFields=Match_addr';
+
+
+    try {
+
+      const response =
+        await fetch(url);
+
+      const data =
+        await response.json();
+
+
+      if (
+        !data.candidates ||
+        data.candidates.length === 0
+      ) {
+
+        message.innerText =
+          'Address not found.';
+
+        return;
+
+      }
+
+
+      const result =
+        data.candidates[0];
+
+
+      const lat =
+        result.location.y;
+
+      const lng =
+        result.location.x;
+
+
+      showLocation(
+        lat,
+        lng,
+        result.address
+      );
+
+
+      message.innerText =
+        result.address;
+
+    }
+
+    catch(error) {
+
+      message.innerText =
+        'Something went wrong searching the address.';
+
+    }
+
+  }
+
+
+
+  document
+    .getElementById(
+      'addressInput'
+    )
+    .addEventListener(
+      'keydown',
+      function(event) {
+
+        if (
+          event.key === 'Enter'
+        ) {
+
+          searchAddress();
+
+        }
+
+      }
+    );
+
+
+
+  fetch(
+    bulkyWasteURL
+  )
+
+  .then(
+    response =>
+      response.json()
+  )
+
+  .then(
+    data => {
+
+      trashData =
+        data;
+
+      drawMap();
+
+    }
+  );
+
+
+
+  const legend =
+    L.control(
+      {
+        position:
+          'bottomright'
+      }
+    );
+
+
+  legend.onAdd =
+    function() {
+
+      const div =
+        L.DomUtil.create(
+          'div',
+          'legend'
+        );
+
+
+      div.innerHTML = `
+
+        <b>Big Trash Map</b>
+
+        <br>
+
+        <span
+          class="color-box"
+          style="background:red;"
+        ></span>
+
+        Today
+
+        <br>
+
+        <span
+          class="color-box"
+          style="background:orange;"
+        ></span>
+
+        Tomorrow
+
+        <br>
+
+        <span
+          class="color-box"
+          style="background:yellow;"
+        ></span>
+
+        2 Days Away
+
+        <br>
+
+        <span
+          class="color-box"
+          style="background:green;"
+        ></span>
+
+        3 Days Away
+
+        <br>
+
+        <span
+          class="color-box"
+          style="background:#9c27b0;"
+        ></span>
+
+        Trash May Be Out
+
+      `;
+
+
+      return div;
+
+    };
+
+
+  legend.addTo(map);
+
+</script>
+
+</body>
+</html>
