@@ -31,23 +31,18 @@
 
     #topControls {
       position: absolute;
-
       top: max(10px, env(safe-area-inset-top));
       left: 10px;
       right: 10px;
-
       z-index: 1000;
 
       background: rgba(255,255,255,0.96);
-
       padding: 8px;
-
       border-radius: 12px;
-
       box-shadow: 0 2px 10px rgba(0,0,0,0.25);
     }
 
-    #searchRow {
+    #topRow {
       display: flex;
       gap: 6px;
     }
@@ -55,29 +50,29 @@
     #addressInput {
       flex: 1;
       min-width: 0;
-
       padding: 10px;
-
       border: 1px solid #bbb;
       border-radius: 8px;
-
       font-size: 16px;
+    }
+
+    #languageSelect {
+      width: 105px;
+      padding: 8px;
+      border: 1px solid #bbb;
+      border-radius: 8px;
+      background: white;
+      font-size: 14px;
+      font-weight: bold;
     }
 
     button {
       border: none;
-
-      padding: 9px 12px;
-
+      padding: 9px 10px;
       border-radius: 8px;
-
       background: #eeeeee;
-
       font-weight: bold;
-
       cursor: pointer;
-
-      white-space: nowrap;
     }
 
     #searchButton {
@@ -87,31 +82,23 @@
 
     #locationButton {
       margin-top: 7px;
-
       width: 100%;
-
       background: #222;
       color: white;
     }
 
     #filters {
       margin-top: 7px;
-
-      display: flex;
-
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 6px;
-
-      overflow-x: auto;
-
-      white-space: nowrap;
-
-      padding-bottom: 2px;
-
-      scrollbar-width: none;
     }
 
-    #filters::-webkit-scrollbar {
-      display: none;
+    #filters button {
+      width: 100%;
+      min-width: 0;
+      padding: 9px 3px;
+      font-size: 12px;
     }
 
     #filters button.active {
@@ -121,85 +108,60 @@
 
     #message {
       display: none;
-
       margin-top: 6px;
-
       text-align: center;
-
       font-size: 13px;
+    }
+
+    #zoneInfo {
+      display: none;
+      margin-top: 8px;
+      padding: 9px 10px;
+      background: #f3f3f3;
+      border-radius: 9px;
+      font-size: 14px;
+      line-height: 19px;
     }
 
     #infoButton {
       position: absolute;
-
       right: 12px;
       bottom: 28px;
-
       z-index: 1000;
 
       width: 44px;
       height: 44px;
-
       border-radius: 50%;
-
       padding: 0;
 
       background: white;
-
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-
       font-size: 20px;
     }
 
     #legendPanel {
       display: none;
-
       position: absolute;
-
       right: 12px;
       bottom: 82px;
-
       z-index: 1000;
 
       background: white;
-
       padding: 12px;
-
       border-radius: 12px;
-
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
 
       line-height: 25px;
-
       font-size: 14px;
     }
 
     .color-box {
       display: inline-block;
-
       width: 14px;
       height: 14px;
-
       margin-right: 7px;
-
       border: 1px solid #555;
-
       vertical-align: middle;
-    }
-
-    @media (max-width: 600px) {
-
-      #topControls {
-        padding: 7px;
-      }
-
-      button {
-        padding: 9px 11px;
-      }
-
-      #addressInput {
-        font-size: 16px;
-      }
     }
   </style>
 </head>
@@ -208,7 +170,7 @@
 
 <div id="topControls">
 
-  <div id="searchRow">
+  <div id="topRow">
 
     <input
       id="addressInput"
@@ -223,8 +185,15 @@
       Search
     </button>
 
-  </div>
+    <select
+      id="languageSelect"
+      onchange="changeLanguage()"
+    >
+      <option value="en">English</option>
+      <option value="es">Español</option>
+    </select>
 
+  </div>
 
   <button
     id="locationButton"
@@ -233,50 +202,56 @@
     📍 Use My Location
   </button>
 
-
   <div id="filters">
 
     <button
       class="active"
       onclick="setFilter('all', this)"
+      data-key="all"
     >
       All
     </button>
 
     <button
-      onclick="setFilter('out', this)"
-    >
-      🗑 Trash May Be Out
-    </button>
-
-    <button
       onclick="setFilter(0, this)"
+      data-key="today"
     >
       Today
     </button>
 
     <button
       onclick="setFilter(1, this)"
+      data-key="tomorrow"
     >
       Tomorrow
     </button>
 
     <button
       onclick="setFilter(2, this)"
+      data-key="twoDays"
     >
       2 Days
     </button>
 
     <button
       onclick="setFilter(3, this)"
+      data-key="threeDays"
     >
       3 Days
     </button>
 
+    <button
+      onclick="setFilter('week', this)"
+      data-key="sevenDays"
+    >
+      Within 7 Days
+    </button>
+
   </div>
 
-
   <div id="message"></div>
+
+  <div id="zoneInfo"></div>
 
 </div>
 
@@ -289,52 +264,119 @@
 </button>
 
 
-<div id="legendPanel">
-
-  <b>Big Trash Map</b><br>
-
-  <span
-    class="color-box"
-    style="background:red;"
-  ></span>
-  Today<br>
-
-  <span
-    class="color-box"
-    style="background:orange;"
-  ></span>
-  Tomorrow<br>
-
-  <span
-    class="color-box"
-    style="background:yellow;"
-  ></span>
-  2 Days Away<br>
-
-  <span
-    class="color-box"
-    style="background:green;"
-  ></span>
-  3 Days Away<br>
-
-  <span
-    class="color-box"
-    style="background:#9c27b0;"
-  ></span>
-  Trash May Be Out
-
-</div>
+<div id="legendPanel"></div>
 
 
 <div id="map"></div>
 
 
-<script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 
 
 <script>
+
+  const translations = {
+
+    en: {
+      searchPlaceholder: 'Search OKC address',
+      search: 'Search',
+      useLocation: '📍 Use My Location',
+
+      all: 'All',
+      today: 'Today',
+      tomorrow: 'Tomorrow',
+      twoDays: '2 Days',
+      threeDays: '3 Days',
+      sevenDays: 'Within 7 Days',
+
+      legendTitle: 'Big Trash Map',
+      legendToday: 'Today',
+      legendTomorrow: 'Tomorrow',
+      legendTwo: '2 Days Away',
+      legendThree: '3 Days Away',
+      legendWeek: '4–7 Days Away',
+      legendTwoWeeks: '8–14 Days Away',
+      legendThreeWeeks: '15–21 Days Away',
+      legendLater: '22+ Days Away',
+
+      findingLocation: 'Finding your location...',
+      locationUnsupported: 'Location is not supported.',
+      locationFailed: 'Could not get your location.',
+
+      typeAddress: 'Type an address first.',
+      searching: 'Searching...',
+      addressNotFound: 'Address not found.',
+      addressFailed: 'Address search failed.',
+
+      youAreHere: 'You are here',
+
+      zoneTitle: 'Your Big Trash Area',
+      noZone: 'No OKC bulky-trash zone found here.',
+      outsideArea: 'This location may be outside the OKC bulky-waste service area.',
+
+      schedule: 'Schedule',
+      nextPickup: 'Next pickup',
+
+      pickupToday: 'Pickup is today',
+      pickupTomorrow: 'Pickup is tomorrow',
+      pickupIn: 'Pickup is in',
+      days: 'days'
+    },
+
+
+    es: {
+      searchPlaceholder: 'Buscar dirección en OKC',
+      search: 'Buscar',
+      useLocation: '📍 Usar mi ubicación',
+
+      all: 'Todos',
+      today: 'Hoy',
+      tomorrow: 'Mañana',
+      twoDays: '2 días',
+      threeDays: '3 días',
+      sevenDays: 'Dentro de 7 días',
+
+      legendTitle: 'Mapa de basura voluminosa',
+      legendToday: 'Hoy',
+      legendTomorrow: 'Mañana',
+      legendTwo: 'En 2 días',
+      legendThree: 'En 3 días',
+      legendWeek: 'En 4–7 días',
+      legendTwoWeeks: 'En 8–14 días',
+      legendThreeWeeks: 'En 15–21 días',
+      legendLater: 'En 22+ días',
+
+      findingLocation: 'Buscando tu ubicación...',
+      locationUnsupported: 'La ubicación no es compatible.',
+      locationFailed: 'No se pudo obtener tu ubicación.',
+
+      typeAddress: 'Escribe una dirección primero.',
+      searching: 'Buscando...',
+      addressNotFound: 'Dirección no encontrada.',
+      addressFailed: 'Error al buscar la dirección.',
+
+      youAreHere: 'Estás aquí',
+
+      zoneTitle: 'Tu zona de basura voluminosa',
+      noZone: 'No se encontró una zona de basura voluminosa de OKC aquí.',
+      outsideArea: 'Esta ubicación puede estar fuera del área de servicio de basura voluminosa de OKC.',
+
+      schedule: 'Horario',
+      nextPickup: 'Próxima recolección',
+
+      pickupToday: 'La recolección es hoy',
+      pickupTomorrow: 'La recolección es mañana',
+      pickupIn: 'La recolección es en',
+      days: 'días'
+    }
+
+  };
+
+
+  let language = 'en';
+
 
   const map = L.map('map').setView(
     [35.4676, -97.5164],
@@ -359,12 +401,14 @@
 
 
   let trashLayer;
-
   let trashData;
-
   let currentFilter = 'all';
-
   let locationMarker;
+
+
+  function t(key) {
+    return translations[language][key];
+  }
 
 
   function getPickupDate(value) {
@@ -390,12 +434,7 @@
     const today =
       new Date();
 
-    today.setHours(
-      0,
-      0,
-      0,
-      0
-    );
+    today.setHours(0,0,0,0);
 
     return Math.round(
       (pickup - today)
@@ -423,11 +462,62 @@
       return 'green';
     }
 
-    return '#999999';
+    if (
+      daysAway >= 4 &&
+      daysAway <= 7
+    ) {
+      return '#7e57c2';
+    }
+
+    if (
+      daysAway >= 8 &&
+      daysAway <= 14
+    ) {
+      return '#2196f3';
+    }
+
+    if (
+      daysAway >= 15 &&
+      daysAway <= 21
+    ) {
+      return '#009688';
+    }
+
+    if (
+      daysAway >= 22
+    ) {
+      return '#9e9e9e';
+    }
+
+    return '#cccccc';
+  }
+
+
+  function getPickupStatus(daysAway) {
+
+    if (daysAway === 0) {
+      return t('pickupToday');
+    }
+
+    if (daysAway === 1) {
+      return t('pickupTomorrow');
+    }
+
+    return (
+      t('pickupIn') +
+      ' ' +
+      daysAway +
+      ' ' +
+      t('days')
+    );
   }
 
 
   function drawMap() {
+
+    if (!trashData) {
+      return;
+    }
 
     if (trashLayer) {
 
@@ -457,12 +547,12 @@
 
 
             if (
-              currentFilter === 'out'
+              currentFilter === 'week'
             ) {
 
               return (
                 daysAway >= 0 &&
-                daysAway <= 3
+                daysAway <= 7
               );
             }
 
@@ -479,35 +569,6 @@
               getDaysAway(feature);
 
 
-            let fillColor =
-              getColor(daysAway);
-
-
-            let opacity =
-              0.08;
-
-
-            if (
-              currentFilter === 'out'
-            ) {
-
-              fillColor =
-                '#9c27b0';
-
-              opacity =
-                0.7;
-            }
-
-            else if (
-              daysAway >= 0 &&
-              daysAway <= 3
-            ) {
-
-              opacity =
-                0.7;
-            }
-
-
             return {
 
               color: '#444',
@@ -515,10 +576,10 @@
               weight: 1,
 
               fillColor:
-                fillColor,
+                getColor(daysAway),
 
               fillOpacity:
-                opacity
+                0.72
             };
           },
 
@@ -537,37 +598,6 @@
               getDaysAway(feature);
 
 
-            let status =
-              'Pickup is later';
-
-
-            if (
-              daysAway === 0
-            ) {
-
-              status =
-                'Pickup is TODAY';
-            }
-
-            else if (
-              daysAway === 1
-            ) {
-
-              status =
-                'Pickup is TOMORROW';
-            }
-
-            else if (
-              daysAway > 1
-            ) {
-
-              status =
-                'Pickup is in ' +
-                daysAway +
-                ' days';
-            }
-
-
             const pickupDate =
               getPickupDate(
                 p.NextPick1
@@ -577,19 +607,27 @@
             layer.bindPopup(
 
               '<b>' +
-              status +
+              getPickupStatus(daysAway) +
               '</b>' +
 
               '<br><br>' +
 
-              '<b>Schedule:</b> ' +
+              '<b>' +
+              t('schedule') +
+              ':</b> ' +
               p.PickupDay +
 
               '<br>' +
 
-              '<b>Pickup date:</b> ' +
+              '<b>' +
+              t('nextPickup') +
+              ':</b> ' +
 
-              pickupDate.toLocaleDateString()
+              pickupDate.toLocaleDateString(
+                language === 'es'
+                  ? 'es-US'
+                  : 'en-US'
+              )
 
             );
           }
@@ -632,6 +670,129 @@
   }
 
 
+  function changeLanguage() {
+
+    language =
+      document.getElementById(
+        'languageSelect'
+      ).value;
+
+
+    document
+      .getElementById(
+        'addressInput'
+      )
+      .placeholder =
+        t('searchPlaceholder');
+
+
+    document
+      .getElementById(
+        'searchButton'
+      )
+      .innerText =
+        t('search');
+
+
+    document
+      .getElementById(
+        'locationButton'
+      )
+      .innerText =
+        t('useLocation');
+
+
+    document
+      .querySelectorAll(
+        '#filters button'
+      )
+      .forEach(
+        button => {
+
+          const key =
+            button.dataset.key;
+
+          button.innerText =
+            t(key);
+
+        }
+      );
+
+
+    updateLegend();
+
+    drawMap();
+
+
+    const zoneInfo =
+      document.getElementById(
+        'zoneInfo'
+      );
+
+
+    if (
+      zoneInfo.dataset.lat &&
+      zoneInfo.dataset.lng
+    ) {
+
+      checkLocationZone(
+        Number(
+          zoneInfo.dataset.lat
+        ),
+
+        Number(
+          zoneInfo.dataset.lng
+        )
+      );
+    }
+  }
+
+
+  function updateLegend() {
+
+    document
+      .getElementById(
+        'legendPanel'
+      )
+      .innerHTML =
+
+      '<b>' +
+      t('legendTitle') +
+      '</b><br>' +
+
+      '<span class="color-box" style="background:red;"></span>' +
+      t('legendToday') +
+      '<br>' +
+
+      '<span class="color-box" style="background:orange;"></span>' +
+      t('legendTomorrow') +
+      '<br>' +
+
+      '<span class="color-box" style="background:yellow;"></span>' +
+      t('legendTwo') +
+      '<br>' +
+
+      '<span class="color-box" style="background:green;"></span>' +
+      t('legendThree') +
+      '<br>' +
+
+      '<span class="color-box" style="background:#7e57c2;"></span>' +
+      t('legendWeek') +
+      '<br>' +
+
+      '<span class="color-box" style="background:#2196f3;"></span>' +
+      t('legendTwoWeeks') +
+      '<br>' +
+
+      '<span class="color-box" style="background:#009688;"></span>' +
+      t('legendThreeWeeks') +
+      '<br>' +
+
+      '<span class="color-box" style="background:#9e9e9e;"></span>' +
+      t('legendLater');
+  }
+
+
   function showMessage(text) {
 
     const message =
@@ -651,10 +812,169 @@
   }
 
 
+  function showZoneInfo(
+    feature,
+    lat,
+    lng
+  ) {
+
+    const zoneInfo =
+      document.getElementById(
+        'zoneInfo'
+      );
+
+
+    zoneInfo.dataset.lat =
+      lat;
+
+    zoneInfo.dataset.lng =
+      lng;
+
+
+    if (!feature) {
+
+      zoneInfo.innerHTML =
+
+        '<strong>' +
+        t('noZone') +
+        '</strong><br>' +
+
+        t('outsideArea');
+
+
+      zoneInfo.style.display =
+        'block';
+
+
+      return;
+    }
+
+
+    const p =
+      feature.properties;
+
+
+    const daysAway =
+      getDaysAway(feature);
+
+
+    const pickupDate =
+      getPickupDate(
+        p.NextPick1
+      );
+
+
+    zoneInfo.innerHTML =
+
+      '<strong>' +
+      t('zoneTitle') +
+      '</strong><br>' +
+
+      '<b>' +
+      t('schedule') +
+      ':</b> ' +
+      p.PickupDay +
+
+      '<br>' +
+
+      '<b>' +
+      t('nextPickup') +
+      ':</b> ' +
+
+      pickupDate.toLocaleDateString(
+        language === 'es'
+          ? 'es-US'
+          : 'en-US'
+      ) +
+
+      '<br>' +
+
+      '<b>' +
+      getPickupStatus(daysAway) +
+      '</b>';
+
+
+    zoneInfo.style.display =
+      'block';
+  }
+
+
+  function findZoneForPoint(
+    lat,
+    lng
+  ) {
+
+    if (
+      !trashData ||
+      !trashData.features
+    ) {
+
+      return null;
+    }
+
+
+    const point =
+      turf.point(
+        [lng, lat]
+      );
+
+
+    for (
+      const feature
+      of trashData.features
+    ) {
+
+      try {
+
+        if (
+          turf.booleanPointInPolygon(
+            point,
+            feature
+          )
+        ) {
+
+          return feature;
+        }
+
+      }
+
+      catch(error) {
+
+        console.log(
+          error
+        );
+      }
+    }
+
+
+    return null;
+  }
+
+
+  function checkLocationZone(
+    lat,
+    lng
+  ) {
+
+    const zone =
+      findZoneForPoint(
+        lat,
+        lng
+      );
+
+
+    showZoneInfo(
+      zone,
+      lat,
+      lng
+    );
+  }
+
+
   function useMyLocation() {
 
     showMessage(
-      'Finding your location...'
+      t('findingLocation')
     );
 
 
@@ -663,55 +983,61 @@
     ) {
 
       showMessage(
-        'Location is not supported.'
+        t('locationUnsupported')
       );
 
       return;
     }
 
 
-    navigator.geolocation.getCurrentPosition(
+    navigator.geolocation
+      .getCurrentPosition(
 
-      function(position) {
+        function(position) {
 
-        const lat =
-          position.coords.latitude;
-
-
-        const lng =
-          position.coords.longitude;
+          const lat =
+            position.coords.latitude;
 
 
-        showLocation(
-          lat,
-          lng,
-          'You are here'
-        );
+          const lng =
+            position.coords.longitude;
 
 
-        showMessage('');
-
-      },
-
-
-      function(error) {
-
-        showMessage(
-          'Could not get your location.'
-        );
-
-      },
+          showLocation(
+            lat,
+            lng,
+            t('youAreHere')
+          );
 
 
-      {
-        enableHighAccuracy:
-          true,
+          checkLocationZone(
+            lat,
+            lng
+          );
 
-        timeout:
-          10000
-      }
 
-    );
+          showMessage('');
+
+        },
+
+
+        function() {
+
+          showMessage(
+            t('locationFailed')
+          );
+
+        },
+
+
+        {
+          enableHighAccuracy:
+            true,
+
+          timeout:
+            10000
+        }
+      );
   }
 
 
@@ -759,12 +1085,10 @@
       input.value.trim();
 
 
-    if (
-      !address
-    ) {
+    if (!address) {
 
       showMessage(
-        'Type an address first.'
+        t('typeAddress')
       );
 
       return;
@@ -772,7 +1096,7 @@
 
 
     showMessage(
-      'Searching...'
+      t('searching')
     );
 
 
@@ -810,7 +1134,7 @@
       ) {
 
         showMessage(
-          'Address not found.'
+          t('addressNotFound')
         );
 
         return;
@@ -821,10 +1145,24 @@
         data.candidates[0];
 
 
+      const lat =
+        result.location.y;
+
+
+      const lng =
+        result.location.x;
+
+
       showLocation(
-        result.location.y,
-        result.location.x,
+        lat,
+        lng,
         result.address
+      );
+
+
+      checkLocationZone(
+        lat,
+        lng
       );
 
 
@@ -835,7 +1173,7 @@
     catch(error) {
 
       showMessage(
-        'Address search failed.'
+        t('addressFailed')
       );
     }
   }
@@ -849,20 +1187,12 @@
       );
 
 
-    if (
+    legend.style.display =
       legend.style.display ===
       'block'
-    ) {
 
-      legend.style.display =
-        'none';
-    }
-
-    else {
-
-      legend.style.display =
-        'block';
-    }
+        ? 'none'
+        : 'block';
   }
 
 
@@ -882,6 +1212,9 @@
         }
       }
     );
+
+
+  updateLegend();
 
 
   fetch(
